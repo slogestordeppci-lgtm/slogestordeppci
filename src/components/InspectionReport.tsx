@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Inspection, StoreSketch } from '../types';
 import { jsPDF } from 'jspdf';
+import { uploadFileToProject } from '../lib/drive-service';
 import { 
   ClipboardCheck, 
   User, 
@@ -21,7 +22,10 @@ import {
   Home,
   Layers,
   HelpCircle,
-  Edit2
+  Edit2,
+  Cloud,
+  Loader2,
+  CheckCircle2
 } from 'lucide-react';
 
 interface InspectionReportProps {
@@ -56,8 +60,10 @@ export function InspectionReport({ inspection, sketches, logoUrl, clientRecord, 
 
   const linkedSketch = sketches.find(s => s.inspectionId === inspection.id);
 
-  // PDF Generator for high fidelity offline print compliance
-  const handlePrint = () => {
+  const [savingDrive, setSavingDrive] = useState(false);
+  const [driveSuccess, setDriveSuccess] = useState('');
+
+  const generatePdfDocument = (): jsPDF => {
     const doc = new jsPDF();
     let y = 20;
 
@@ -665,7 +671,33 @@ export function InspectionReport({ inspection, sketches, logoUrl, clientRecord, 
       });
     }
 
+    return doc;
+  };
+
+  const handlePrint = () => {
+    const doc = generatePdfDocument();
     doc.save(`laudo_vistoria_campo_${(inspection.clientName || 'cliente').toLowerCase().replace(/\s+/g, '_')}.pdf`);
+  };
+
+  const handleSaveToDrive = async () => {
+    setSavingDrive(true);
+    setDriveSuccess('');
+    try {
+      const doc = generatePdfDocument();
+      const pdfBlob = doc.output('blob');
+      const fileName = `laudo_vistoria_${(inspection.clientName || 'cliente').toLowerCase().replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`;
+      const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+      const targetProjectId = inspection.projectId || inspection.id;
+      
+      await uploadFileToProject(targetProjectId, pdfFile, 'elaborado');
+      setDriveSuccess('Laudo PDF enviado e salvo com sucesso no Google Drive!');
+      setTimeout(() => setDriveSuccess(''), 6000);
+    } catch (err: any) {
+      console.error(err);
+      alert('Erro ao enviar para o Google Drive: ' + (err.message || err));
+    } finally {
+      setSavingDrive(false);
+    }
   };
 
   const renderPhotoThumbs = (photos?: string[]) => {
@@ -716,7 +748,7 @@ export function InspectionReport({ inspection, sketches, logoUrl, clientRecord, 
           </p>
         </div>
         
-        <div className="flex items-center gap-2 print:hidden">
+        <div className="flex flex-wrap items-center gap-2 print:hidden">
           <button
             onClick={() => {
               sessionStorage.setItem('draft_inspection', JSON.stringify(inspection));
@@ -729,6 +761,16 @@ export function InspectionReport({ inspection, sketches, logoUrl, clientRecord, 
           </button>
 
           <button
+            onClick={handleSaveToDrive}
+            disabled={savingDrive}
+            className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-blue-300 hover:text-white bg-blue-950/60 hover:bg-blue-900/80 border border-blue-800/80 rounded-lg transition-all cursor-pointer shrink-0 disabled:opacity-50"
+            title="Salvar cópia em PDF na pasta do projeto no Google Drive"
+          >
+            {savingDrive ? <Loader2 className="w-4 h-4 animate-spin text-blue-400" /> : <Cloud className="w-4 h-4 text-blue-400" />}
+            <span>Salvar no Google Drive</span>
+          </button>
+
+          <button
             onClick={handlePrint}
             className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-zinc-300 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-lg transition-all cursor-pointer shrink-0"
           >
@@ -737,6 +779,13 @@ export function InspectionReport({ inspection, sketches, logoUrl, clientRecord, 
           </button>
         </div>
       </div>
+
+      {driveSuccess && (
+        <div className="p-3 bg-emerald-950/80 border border-emerald-800 rounded-xl text-xs text-emerald-300 flex items-center gap-2 animate-in fade-in duration-200">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{driveSuccess}</span>
+        </div>
+      )}
 
       {/* Meta Info Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-zinc-900/30 p-4 rounded-xl border border-zinc-900/50 print:bg-zinc-100 print:border-zinc-300 print:text-black">

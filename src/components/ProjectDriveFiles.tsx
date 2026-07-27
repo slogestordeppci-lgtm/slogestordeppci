@@ -44,10 +44,14 @@ export function ProjectDriveFiles({ projectId }: { projectId: string }) {
   };
 
   const handleLogin = async () => {
+    setError('');
     try {
       await googleSignIn();
-    } catch (err) {
+      setNeedsAuth(false);
+      loadFiles();
+    } catch (err: any) {
       console.error(err);
+      setError(err.message || 'Erro ao conectar com Google Drive.');
     }
   };
 

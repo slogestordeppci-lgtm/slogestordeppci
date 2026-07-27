@@ -178,6 +178,7 @@ export interface Lead {
 
 export interface Inspection {
   id: string;
+  projectId?: string;
   date: string;
   clientId?: string;
   clientName: string;
