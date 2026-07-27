@@ -40,6 +40,7 @@ export function SettingsView() {
   const [tempCnpj, setTempCnpj] = useState(data.companyCnpj || '');
   const [tempCep, setTempCep] = useState(data.companyCep || '');
   const [tempAddress, setTempAddress] = useState(data.companyAddress || '');
+  const [tempGoogleEmail, setTempGoogleEmail] = useState(data.googleAccountEmail || user?.email || 'slogestordeppci@gmail.com');
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   // Local state for Google Login
@@ -56,6 +57,8 @@ export function SettingsView() {
       companyCnpj: tempCnpj,
       companyCep: tempCep,
       companyAddress: tempAddress,
+      googleAccountEmail: tempGoogleEmail,
+      isGoogleConnected: true,
     });
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3000);
@@ -245,7 +248,7 @@ export function SettingsView() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-semibold text-zinc-300 mb-1">
                 Telefone de Contato / WhatsApp
@@ -274,6 +277,23 @@ export function SettingsView() {
                   onChange={(e) => setTempEmail(e.target.value)}
                   className="w-full pl-9 pr-3 py-2 bg-zinc-900 border border-zinc-800 text-white rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500 text-sm"
                   placeholder="Ex: contato@sloengenharia.com.br"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-zinc-300 mb-1 flex items-center justify-between">
+                <span>E-mail do Google (Google Drive)</span>
+                <span className="text-[10px] text-blue-400 font-normal">Armazenamento</span>
+              </label>
+              <div className="relative">
+                <Globe className="w-4 h-4 text-blue-400 absolute left-3 top-2.5" />
+                <input
+                  type="email"
+                  value={tempGoogleEmail}
+                  onChange={(e) => setTempGoogleEmail(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 bg-zinc-900 border border-zinc-800 text-white rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm font-mono"
+                  placeholder="slogestordeppci@gmail.com"
                 />
               </div>
             </div>
