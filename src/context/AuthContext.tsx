@@ -1,19 +1,10 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { 
-  auth, 
-  onAuthStateChanged, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  signOut, 
-  updateProfile,
-  sendPasswordResetEmail,
-  GoogleAuthProvider,
-  signInWithPopup,
-  User 
-} from '../lib/firebase';
+import { User, Session } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 
 interface AuthContextType {
   user: User | null;
+  session: Session | null;
   loading: boolean;
   loginWithEmail: (email: string, pass: string) => Promise<void>;
   registerWithEmail: (name: string, email: string, pass: string) => Promise<void>;
@@ -26,62 +17,84 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+    // Buscar sessão inicial do Supabase
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    // Escutar alterações de autenticação (login, logout, refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const loginWithEmail = async (email: string, pass: string) => {
-    try {
-      await signInWithEmailAndPassword(auth, email, pass);
-    } catch (err: any) {
-      throw new Error(translateAuthError(err.code));
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password: pass,
+    });
+    if (error) {
+      throw new Error(translateSupabaseAuthError(error.message));
     }
   };
 
   const registerWithEmail = async (name: string, email: string, pass: string) => {
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
-      if (userCredential.user) {
-        await updateProfile(userCredential.user, {
-          displayName: name
-        });
+    const { error } = await supabase.auth.signUp({
+      email,
+      password: pass,
+      options: {
+        data: {
+          display_name: name,
+          full_name: name,
+        }
       }
-    } catch (err: any) {
-      throw new Error(translateAuthError(err.code));
+    });
+    if (error) {
+      throw new Error(translateSupabaseAuthError(error.message));
     }
   };
 
   const loginWithGoogle = async () => {
-    try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-    } catch (err: any) {
-      throw new Error(translateAuthError(err.code));
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin,
+      }
+    });
+    if (error) {
+      throw new Error(translateSupabaseAuthError(error.message));
     }
   };
 
   const logout = async () => {
-    await signOut(auth);
+    await supabase.auth.signOut();
   };
 
   const resetPassword = async (email: string) => {
-    try {
-      await sendPasswordResetEmail(auth, email);
-    } catch (err: any) {
-      throw new Error(translateAuthError(err.code));
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin,
+    });
+    if (error) {
+      throw new Error(translateSupabaseAuthError(error.message));
     }
   };
 
   return (
     <AuthContext.Provider value={{
       user,
+      session,
       loading,
       loginWithEmail,
       registerWithEmail,
@@ -102,25 +115,23 @@ export function useAuth() {
   return context;
 }
 
-function translateAuthError(code?: string): string {
-  switch (code) {
-    case 'auth/user-not-found':
-    case 'auth/wrong-password':
-    case 'auth/invalid-credential':
-      return 'E-mail ou senha incorretos.';
-    case 'auth/email-already-in-use':
-      return 'Este e-mail já está cadastrado no Gestor PPCI.';
-    case 'auth/weak-password':
-      return 'A senha deve conter no mínimo 6 caracteres.';
-    case 'auth/invalid-email':
-      return 'Por favor, insira um e-mail válido.';
-    case 'auth/user-disabled':
-      return 'Esta conta de usuário foi desativada.';
-    case 'auth/too-many-requests':
-      return 'Muitas tentativas malsucedidas. Tente novamente mais tarde.';
-    case 'auth/popup-closed-by-user':
-      return 'O login com o Google foi cancelado.';
-    default:
-      return 'Ocorreu um erro na autenticação. Tente novamente.';
+function translateSupabaseAuthError(message: string): string {
+  const lower = message.toLowerCase();
+  if (lower.includes('invalid login credentials') || lower.includes('invalid_credentials')) {
+    return 'E-mail ou senha incorretos.';
   }
+  if (lower.includes('user already registered') || lower.includes('already registered')) {
+    return 'Este e-mail já está cadastrado no sistema.';
+  }
+  if (lower.includes('password should be at least')) {
+    return 'A senha deve conter no mínimo 6 caracteres.';
+  }
+  if (lower.includes('invalid email')) {
+    return 'Por favor, insira um e-mail válido.';
+  }
+  if (lower.includes('too many requests')) {
+    return 'Muitas tentativas. Aguarde um instante e tente novamente.';
+  }
+  return message || 'Ocorreu um erro na autenticação com Supabase.';
 }
+

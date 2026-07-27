@@ -16,9 +16,12 @@ import {
   Car,
   FileText,
   Calculator,
-  Wrench
+  Wrench,
+  LogOut,
+  User as UserIcon
 } from 'lucide-react';
 import { useStore } from '../store';
+import { useAuth } from '../context/AuthContext';
 
 interface SidebarProps {
   currentView: string;
@@ -27,7 +30,11 @@ interface SidebarProps {
 
 export function Sidebar({ currentView, setCurrentView }: SidebarProps) {
   const { data } = useStore();
+  const { user, logout } = useAuth();
   
+  const userName = user?.user_metadata?.display_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Usuário';
+  const userEmail = user?.email || '';
+
   const navGroups = [
     {
       title: 'Visão Geral',
@@ -122,10 +129,32 @@ export function Sidebar({ currentView, setCurrentView }: SidebarProps) {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-zinc-900 text-[10px] text-zinc-600 font-medium space-y-1">
-        <p>Gestor PPCI • Sistema de Gestão v1.2</p>
-        <p>© Alessandro M. Zandoná • Direitos Reservados</p>
+      {/* User profile & Logout */}
+      {user && (
+        <div className="p-3 border-t border-zinc-900 bg-zinc-950/60 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-8 h-8 rounded-full bg-red-950 border border-red-800/50 flex items-center justify-center shrink-0">
+              <UserIcon className="w-4 h-4 text-red-400" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold text-white truncate">{userName}</p>
+              <p className="text-[10px] text-zinc-500 truncate">{userEmail}</p>
+            </div>
+          </div>
+          <button
+            onClick={() => logout()}
+            className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-zinc-900 transition-colors shrink-0"
+            title="Sair do Sistema"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      <div className="p-3 border-t border-zinc-900 text-[10px] text-zinc-600 font-medium space-y-0.5 text-center">
+        <p>Gestor PPCI • Sistema v1.2</p>
       </div>
     </div>
   );
 }
+

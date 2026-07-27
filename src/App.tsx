@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { StoreProvider } from './store';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { LoginView } from './components/LoginView';
 import { Sidebar } from './components/Sidebar';
 import { DashboardView } from './views/DashboardView';
 import { ProjectsView } from './views/ProjectsView';
@@ -9,7 +11,7 @@ import { SettingsView } from './views/SettingsView';
 import { CompanySettingsModal } from './components/CompanySettingsModal';
 import { ClientsView } from './views/ClientsView';
 import { ExtinguishersView } from './views/ExtinguishersView';
-import { Menu } from 'lucide-react';
+import { Menu, Flame, Loader2 } from 'lucide-react';
 
 import { AgendaView } from './views/AgendaView';
 import { ProvidersView } from './views/ProvidersView';
@@ -99,10 +101,37 @@ function MainLayout() {
   );
 }
 
+function AppContent() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center gap-3">
+        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-600 to-amber-600 p-2.5 flex items-center justify-center shadow-lg shadow-red-900/30 animate-pulse">
+          <Flame className="w-7 h-7 text-white fill-amber-300" />
+        </div>
+        <div className="flex items-center gap-2 text-xs text-zinc-400 font-medium">
+          <Loader2 className="w-4 h-4 animate-spin text-red-500" />
+          <span>Verificando autenticação Supabase...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginView />;
+  }
+
+  return <MainLayout />;
+}
+
 export default function App() {
   return (
-    <StoreProvider>
-      <MainLayout />
-    </StoreProvider>
+    <AuthProvider>
+      <StoreProvider>
+        <AppContent />
+      </StoreProvider>
+    </AuthProvider>
   );
 }
+
