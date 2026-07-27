@@ -42,26 +42,33 @@ export async function syncDataToSupabase(data: AppData): Promise<{ success: bool
     }
 
     // 3. Sync Projects
+    // Remove sample projects if present in Supabase
+    await supabase.from('projects').delete().in('id', ['1', '2']);
+    await supabase.from('projects').delete().in('client_name', ['Restaurante Central', 'Depósito de Gás Litoral']);
+
     if (data.projects && data.projects.length > 0) {
-      const projectPayload = data.projects.map(p => ({
-        id: p.id,
-        client_id: p.clientId,
-        client_name: p.clientName,
-        address: p.address,
-        status: p.status,
-        type: p.type,
-        value: p.value || 0,
-        payment_methods: p.paymentMethods || [],
-        discount_percentage: p.discountPercentage || 0,
-        interest_percentage: p.interestPercentage || 0,
-        checklist: p.checklist,
-        notes: p.notes,
-        last_visit: p.lastVisit,
-        budgets: p.budgets || [],
-        actions: p.actions || {},
-      }));
-      const { error } = await supabase.from('projects').upsert(projectPayload, { onConflict: 'id' });
-      if (error) console.warn('Supabase projects upsert:', error.message);
+      const validProjects = data.projects.filter(p => p.id !== '1' && p.id !== '2' && p.clientName !== 'Restaurante Central' && p.clientName !== 'Depósito de Gás Litoral');
+      if (validProjects.length > 0) {
+        const projectPayload = validProjects.map(p => ({
+          id: p.id,
+          client_id: p.clientId,
+          client_name: p.clientName,
+          address: p.address,
+          status: p.status,
+          type: p.type,
+          value: p.value || 0,
+          payment_methods: p.paymentMethods || [],
+          discount_percentage: p.discountPercentage || 0,
+          interest_percentage: p.interestPercentage || 0,
+          checklist: p.checklist,
+          notes: p.notes,
+          last_visit: p.lastVisit,
+          budgets: p.budgets || [],
+          actions: p.actions || {},
+        }));
+        const { error } = await supabase.from('projects').upsert(projectPayload, { onConflict: 'id' });
+        if (error) console.warn('Supabase projects upsert:', error.message);
+      }
     }
 
     // 4. Sync Inventory
