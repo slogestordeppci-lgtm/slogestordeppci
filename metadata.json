@@ -1,0 +1,8 @@
+{
+  "name": "Remix: PPCI",
+  "description": "Sistema completo de gestão de projetos PPCI, vistorias técnicas de segurança contra incêndio, inventário, agenda, frotas e financeiro.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
